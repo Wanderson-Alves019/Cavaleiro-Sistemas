@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      // Usuários autenticados podem consultar o ranking.
+      allow read: if request.auth != null;
+
+      // O primeiro login cria o próprio perfil com o e-mail validado pelo Google.
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.coins.total == 1250
+        && request.resource.data.coins.gold == 850
+        && request.resource.data.coins.silver == 300
+        && request.resource.data.coins.bronze == 100;
+
+      // O usuário pode atualizar seus dados de perfil, mas não pode alterar moedas no cliente.
+      allow update: if (request.auth != null
+        && request.auth.token.email == "wa758833@gmail.com"
+        && request.auth.token.email_verified == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "updatedAt"]))
+        || (request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.coins == resource.data.coins);
+
+      allow delete: if false;
+    }
+  }
+}
